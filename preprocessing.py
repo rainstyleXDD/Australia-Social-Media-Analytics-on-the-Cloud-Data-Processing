@@ -42,6 +42,8 @@ def main():
 
                 # filter the non-english tweets
                 if tweet['doc']['data']['lang'] == 'en':
+                    if count != 0:
+                        outfile.write(',\n')
                     tweet_dic['id'] = tweet['id']
                     tweet_dic['value'] = tweet['value']
                     tweet_dic['author_id'] = tweet['doc']['data']['author_id']
@@ -67,11 +69,6 @@ def main():
 
                     json_object = json.dumps(tweet_dic, indent=4)
                     outfile.write(json_object)
-                    count += 1
-                    if count != len(tweet_data):
-                        outfile.write(',\n')
-
-                else:
                     count += 1
 
             outfile.write('\n]')
