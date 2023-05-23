@@ -5,7 +5,7 @@ import couchdb
 
 # constant
 UNNEED_CHAR_POS = -4
-URL = 'http://admin:password@172.26.133.215:5984/'
+URL = 'http://admin:password@172.26.130.251:5984/'
 
 # input and output file path
 FILE_PATH = './sudo_data/rai_business_indicators_lga_2011-5781914874165984729.json'

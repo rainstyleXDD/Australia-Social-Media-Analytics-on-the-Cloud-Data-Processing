@@ -4,7 +4,7 @@ import json
 
 # constant
 FILE_NUM = 4
-URL = 'http://admin:password@172.26.133.215:5984/'
+URL = 'http://admin:password@172.26.130.251:5984/'
 
 # upload each file
 for num in range(FILE_NUM):
@@ -17,7 +17,7 @@ for num in range(FILE_NUM):
         couch = couchdb.Server(URL)
         db = couch['twitter_data']
 
-        # upload the data and catch the error
+        # upload the data and catch the server error
         try:
             db.update(data)
         except couchdb.http.ServerError as e:
