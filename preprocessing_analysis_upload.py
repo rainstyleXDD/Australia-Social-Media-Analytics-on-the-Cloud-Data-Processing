@@ -119,7 +119,7 @@ def main():
 
                     # if it match one of the scenario, write in the output file
                     else:
-                        tweet_dict['_id'] = str(uuid.uuid4())
+                        tweet_dict['_id'] = uuid.uuid4().hex
                         tweet_dict['location']['state'] = tweet['state']
                         tweet_dict['location']['lga'] = tweet['full_name']
                         tweet_dict['sentiment'] = tweet['sentiment']
