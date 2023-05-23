@@ -5,7 +5,7 @@ from datetime import datetime
 import pytz
 import uuid
 import couchdb
-from collections import Counter
+from collections import Counter, defaultdict
 
 # constant
 URL = 'http://admin:password@172.26.133.215:5984/'
@@ -27,7 +27,7 @@ CLIMATE_KEYWORD = ["climate", "ClimateCrisis", "ClimateCriminals",
 
 
 # Filter the tweet which not relavant to the scenario
-def filter_data():
+def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
     size = comm.Get_size()
@@ -39,6 +39,8 @@ def filter_data():
     lga_tweet = Counter()
     lga_tweet_latenight = Counter()
     lga_tweet_climate = Counter()    
+    #CLOCK = {hour:0 for hour in range(24)}
+    lga_tweet_time = defaultdict(Counter)
 
     # process all files
     for i in range(file_num):
@@ -87,21 +89,28 @@ def filter_data():
                     if (keyword in tweet['value']['tokens']) or (keyword in tweet['value']['tags']):
                         lga_tweet_climate[tweet["full_name"]] += 1
                         break
-                
+
+                lga_tweet_time[tweet["full_name"]][local_time.hour//1] +=1
                 lga_tweet[tweet["full_name"]] += 1
 
     # aggregate and print out the formated results
     if rank == 0:
-        
+        lga_tweet_time_list = []
         # collect the data
         for i in range(1, size):
             lga_tweet += comm.recv(source=i, tag=1)
             lga_tweet_climate += comm.recv(source=i, tag=2)
-            lga_tweet_latenight = comm.recv(source=i, tag=3)
+            lga_tweet_latenight += comm.recv(source=i, tag=3)
+            lga_tweet_time_list.append(comm.recv(source=i, tag=4))
+
+        for dic in lga_tweet_time_list:
+            for clock in dic:
+                lga_tweet_time[clock] += dic[clock]
 
         print(sum(lga_tweet.values()))
         print(sum(lga_tweet_climate.values()))
         print(sum(lga_tweet_latenight.values()))
+        
         with open('./processed_data/tweetPlaceCount' + '.json', 'w') as outfile:
             json_lga_tweet = json.dumps(dict(lga_tweet))
             outfile.write(json_lga_tweet)
@@ -113,17 +122,20 @@ def filter_data():
             json_lga_tweet_latenight = json.dumps(dict(lga_tweet_latenight))
             outfile.write(json_lga_tweet_latenight)
             
+        with open('./processed_data/tweetTimeCount' + '.json', 'w') as outfile:
+            json_lga_tweet_time = json.dumps(dict(lga_tweet_time))
+            outfile.write(json_lga_tweet_time)
 
     else:
         comm.send(lga_tweet, 0, tag=1)
         comm.send(lga_tweet_climate, 0, tag=2)
         comm.send(lga_tweet_latenight, 0, tag=3)
+        comm.send(lga_tweet_time, 0, tag=4)
 
 
     return 
 
-def main():
-    filter_data()
+
 
 if __name__ == "__main__":
     main()
