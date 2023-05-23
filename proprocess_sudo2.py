@@ -9,11 +9,11 @@ URL = 'http://admin:password@172.26.130.251:5984/'
 
 # input and output file path
 FILE_PATH = ['./sudo_data/abs_2021census_g62_aust_lga-36315067387021157.json',
-             './sudo_data/lga11_healthriskfactors_modelledestimate-7414866553980188670.json',
-             './sudo_data/phidu_labour_force_lga_2016_19-1226199109284126335.json']
+            './sudo_data/lga11_healthriskfactors_modelledestimate-7414866553980188670.json',
+            './sudo_data/phidu_labour_force_lga_2016_19-1226199109284126335.json']
 OUT_FILE_PATH = ['./sudo_data/go_work.json',
-                 './sudo_data/health_risk.json',
-                  './sudo_data/unemployment.json']
+                './sudo_data/health_risk.json',
+                './sudo_data/unemployment.json']
 
 # extract the useful data from sudo
 for i in range(len(FILE_PATH)):
