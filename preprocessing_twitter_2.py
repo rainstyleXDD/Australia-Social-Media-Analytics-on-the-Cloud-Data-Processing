@@ -1,31 +1,21 @@
+"""
+@author Team 63, Melbourne, 2023
+
+Hanying Li (1181148) Haichi Long (1079593) Ji Feng (1412053)
+Jiayao Lu (1079059) Xinlin Li (1068093)
+"""
+
 # import libraries
 import json
-from mpi4py import MPI
-from datetime import datetime
 import pytz
 import uuid
 import couchdb
-from collections import Counter, defaultdict
+from mpi4py import MPI
 from copy import deepcopy
+from constant import const
+from datetime import datetime
 
 # constant
-URL = 'http://admin:password@172.26.133.215:5984/'
-
-SYD_TIME = {'NSW': 'Australia/Sydney',
-            'VIC': 'Australia/Sydney',
-            'QLD': 'Australia/Sydney',
-            'ACT': 'Australia/Sydney',
-            'TAS': 'Australia/Sydney'}
-
-ADE_TIME  ={'SA': 'Australia/Adelaide',
-            'NT': 'Australia/Adelaide'}
-
-PER_TIME = {'WA': 'Australia/Perth'}
-
-CLIMATE_KEYWORD = ["climate", "ClimateCrisis", "ClimateCriminals",
-                   "ClimateActionNow", "ClimateApe", "climatechange",
-                   "ClimateStrike", "Climate", "ClimateEmergency", "ClimateChange"]
-
 INI_TWEET = {
     '_id': 0,
     'location': {'state': 0,
@@ -44,30 +34,31 @@ INI_TWEET = {
     'mention_night': False
 }
 
+START_NIGHT = 22
+END_NIGHT = 5
+FILE_NUM = 9
+
 # Filter the tweet which not relavant to the scenario
-def main():
+def filter_data(comm):
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
-    size = comm.Get_size()
+
     # find the number of file for each rank
-    file_num = 9
+    file_num = FILE_NUM
     if rank == 0:
-        file_num = 8
-
-    lga_tweet = Counter()
-    lga_tweet_latenight = Counter()
-    lga_tweet_climate = Counter()    
-   
-
-    file_path_w = './curated_filter_data2/tweetFiltered'+ str(rank) + '.json'
+        file_num = FILE_NUM - 1
+    
+    file_path_w = './curated_filter_data/tweetFiltered'+ str(rank) + '.json'
     with open(file_path_w, 'w') as outfile:
-        in_scenario = 0
-        count = 0
         outfile.write('[')
+
+        # count the number of twitter
+        count = 0
+        useful_tw = 0
+
         # process all files
         for i in range(file_num):
             file_path_r = './curated_data/tweetsProcessed' + str(rank) + '_' + str(i) + '.json'
-            print(rank, "reading", i)
 
             with open(file_path_r, 'r') as file:
 
@@ -77,41 +68,59 @@ def main():
                 for tweet in data:
 
                     # initialise the dictionary
-                    tweet_dict = deepcopy( INI_TWEET)
+                    tweet_dict = deepcopy(INI_TWEET)
+
+                    # use to decide whether the tweet match the scenarios
+                    in_scenario = 0
+
                     # change the timezone based on state
                     state = tweet['state'].upper()
 
                     # create a datetime object representing the UTC time
                     utc_time = datetime.strptime(tweet['created_at'], "%Y-%m-%dT%H:%M:%S.%fZ")
                     
-                    if state in SYD_TIME:
+                    if state in const.SYD_TIME:
                         # set the timezone for Sydney
-                        city_tz = pytz.timezone(SYD_TIME[state])
+                        city_tz = pytz.timezone(const.SYD_TIME[state])
 
-                    elif state in ADE_TIME:
+                    elif state in const.ADE_TIME:
                         # set the timezone for Adelaide
-                        city_tz = pytz.timezone(ADE_TIME[state])
+                        city_tz = pytz.timezone(const.ADE_TIME[state])
 
-                    elif state in PER_TIME:
+                    elif state in const.PER_TIME:
                         # set the timezone for Perth
-                        city_tz = pytz.timezone(PER_TIME[state])
+                        city_tz = pytz.timezone(const.PER_TIME[state])
 
                     # convert the UTC time to local time
                     local_time = utc_time.replace(tzinfo=pytz.utc).astimezone(city_tz)
                     
-                    # check whether the tweet match the first scenario
-                    if local_time.hour >= 23 or local_time.hour <= 5:
+                    # check whether the tweet match the night scenario
+                    if local_time.hour >= START_NIGHT or local_time.hour <= END_NIGHT:
+                        tweet_dict['mention_enter'] = True
                         tweet_dict['mention_night'] = True
                         in_scenario += 1
-                        
                     
-                    # check whether the tweet match the second scenario
-                    for keyword in CLIMATE_KEYWORD:
+                    # check whether the tweet match the coffee scenario
+                    for keyword in const.COFFEE_KEYWORD:
+                        if keyword in tweet['value']['tokens'].lower():
+                            tweet_dict['mention_coffee'] = True
+                            in_scenario += 1
+                            break
+                    
+                    # check whether the tweet match the work scenario
+                    for keyword in const.WORK_KEYWORD:
+                        if keyword in tweet['value']['tokens'].lower():
+                            tweet_dict['mention_work'] = True
+                            in_scenario += 1
+                            break
+                    
+                    # check whether the tweet match the climate scenario
+                    for keyword in const.CLIMATE_KEYWORD:
                         if (keyword in tweet['value']['tokens']) or (keyword in tweet['value']['tags']):
                             tweet_dict['mention_climate'] = True
                             in_scenario += 1
                             break
-
+                    
                     # check this tweet whether match any scenario
                     if in_scenario == 0:
                         count += 1
@@ -143,33 +152,55 @@ def main():
 
         # close the formated JSON file
         outfile.write(']')
-                    
+    print(f'rank{rank}: {useful_tw}')
+    return count
 
-        # aggregate and print out the formated results
-        if rank == 0:
-            
-            count += comm.recv(source=i, tag=1)
-            
-            # save the total number of tweet in couchDB
-            couch = couchdb.Server(URL)
-            db = couch['twitter_data']
-            uid = str(uuid.uuid4())
-            doc = {'_id': uid, 'total_tweet': count}
-            db.save(doc)
-            print('id:', uid)
-            print('count:', count)
+# Process of the master processor
+def master_tweet_processor(comm):
+    result = filter_data(comm)
 
-            return
+    # send result to master processor
+    all_result = comm.gather(result, root=0)
 
-            
+    # sum the total tweet count
+    count_tweet = 0
+    for num in all_result:
+        count_tweet += num
+    
+    # save the total number of tweet in couchDB
+    couch = couchdb.Server(const.URL)
+    db_name = 'twitter_data'
+    
+    # if not exist, create one
+    if db_name not in couch:
+        db = couch.create(db_name)
+    else:
+        db = couch[db_name]
+    uid = uuid.uuid4().hex
+    doc = {'_id': uid, 'total_tweet': count_tweet}
+    db.save(doc)
 
-        else:
-            comm.send(count, 0, tag=1)
+    return None
 
+# Process of the slave processor
+def slave_tweet_processor(comm):
+    result = filter_data(comm)
 
-    return 
+    # send result to master processor
+    comm.gather(result, root=0)
+    
+    return None
 
-
+def main():
+    comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    
+    if rank == 0:
+        # we are master
+        master_tweet_processor(comm)
+    else:
+        # we are slave
+        slave_tweet_processor(comm)
 
 if __name__ == "__main__":
     main()

@@ -1,16 +1,24 @@
+"""
+@author Team 63, Melbourne, 2023
+
+Hanying Li (1181148) Haichi Long (1079593) Ji Feng (1412053)
+Jiayao Lu (1079059) Xinlin Li (1068093)
+"""
+
 # import libraries
 import json
 from mpi4py import MPI
 
 # constant
 FILE_NUM = 10
+LGA_FILE_PATH = './sudo_data/lga.json'
 
 def main():
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
 
     # Opening lga JSON file
-    with open('./sudo_data/lga.json', 'r') as lga:
+    with open(LGA_FILE_PATH, 'r') as lga:
 
         # returns JSON object as a dictionary
         lga_data = json.load(lga)

@@ -1,11 +1,19 @@
+"""
+@author Team 63, Melbourne, 2023
+
+Hanying Li (1181148) Haichi Long (1079593) Ji Feng (1412053)
+Jiayao Lu (1079059) Xinlin Li (1068093)
+"""
+
 # import libraries
 import json
 import uuid
 import couchdb
+from constant import const
 
 # constant
 UNNEED_CHAR_POS = -4
-URL = 'http://admin:password@172.26.130.251:5984/'
+DB_NAMES = ['sudo_climate', 'sudo_health', 'sudo_unemp']
 
 # input and output file path
 FILE_PATH = ['./sudo_data/abs_2021census_g62_aust_lga-36315067387021157.json',
@@ -33,4 +41,18 @@ for i in range(len(FILE_PATH)):
             if index < (len(data['features']) - 1):
                 out_file.write(',\n')
         out_file.write(']')
+
+# connect to couchdb server
+couch = couchdb.Server(const.URL)
+
+# save the data in couchDB
+for i in range(len(DB_NAMES)):
+    with open(OUT_FILE_PATH[i], 'r') as f:
+        sudo_data = json.load(f)
+        # if not exist, create one
+        if DB_NAMES not in couch:
+            db = couch.create(DB_NAMES[i])
+        else:
+            db = couch[DB_NAMES[i]]
+        db.update(sudo_data)
 

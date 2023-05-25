@@ -1,0 +1,5 @@
+raw_data/
+.idea/
+.ipynb_checkpoints/
+__pycache__/
+curated_data/

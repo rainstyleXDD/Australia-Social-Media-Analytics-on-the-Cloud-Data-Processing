@@ -1,11 +1,19 @@
+"""
+@author Team 63, Melbourne, 2023
+
+Hanying Li (1181148) Haichi Long (1079593) Ji Feng (1412053)
+Jiayao Lu (1079059) Xinlin Li (1068093)
+"""
+
 # import libraries
 import json
 import uuid
 import couchdb
+from constant import const
 
 # constant
 UNNEED_CHAR_POS = -4
-URL = 'http://admin:password@172.26.130.251:5984/'
+DB_NAME = 'sudo'
 
 # input and output file path
 FILE_PATH = './sudo_data/rai_business_indicators_lga_2011-5781914874165984729.json'
@@ -24,15 +32,22 @@ with open(FILE_PATH, 'r') as file, open(OUT_FILE_PATH, 'w') as out_file:
         properties['_id'] = str(uuid.uuid4())
         json_object = json.dumps(properties)
         out_file.write(json_object)
+        
         if index < (len(data['features']) - 1):
             out_file.write(',\n')
+
     out_file.write(']')
 
 # connect to couchdb server
-couch = couchdb.Server(URL)
-db = couch['sudo']
+couch = couchdb.Server(const.URL)
 
-# save the data in couchDB
+# if not exist, create one
+if DB_NAME not in couch:
+    db = couch.create(DB_NAME)
+else:
+    db = couch[DB_NAME]
+
+# save the business data in couchDB
 with open(OUT_FILE_PATH, 'r') as f:
     sudo_data = json.load(f)
     db.update(sudo_data)

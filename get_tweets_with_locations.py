@@ -1,6 +1,17 @@
+"""
+@author Team 63, Melbourne, 2023
+
+Hanying Li (1181148) Haichi Long (1079593) Ji Feng (1412053)
+Jiayao Lu (1079059) Xinlin Li (1068093)
+"""
+
+# import libraries
 from mpi4py import MPI
 import time
 import os
+
+# constants
+PATH = "./twitter-huge.json/mnt/ext100/twitter-huge.json"
 
 def main():
     """ The program starts executing from here. """
@@ -13,23 +24,19 @@ def main():
     pickle_size = 100000
 
     t1_start = time.perf_counter()
-    path = "./twitter-huge.json/mnt/ext100/twitter-huge.json"
-    # with open('sal.json', "rb") as f:
-    #     sal = json.load(f)
 
-    with open(path, "r") as f:
-        
+    with open(PATH, "r") as f:
 
         # get size of the file and partition the file
-        tweet_file_size = os.path.getsize(path)
+        tweet_file_size = os.path.getsize(PATH)
         chunk_size = tweet_file_size // size
         start = rank * chunk_size
         end = (rank + 1) * chunk_size if rank != size - 1 else tweet_file_size 
 
-        #print(rank, start, end)
         count = 0
         total_count = 0
         pickle_count = 0
+
         # find end _id
         f.seek(end, 0)
         
@@ -38,8 +45,6 @@ def main():
             if ('{"id":"' in line) and ('","key"' in line):
                 end_id = line.split('{"id":"')[1].split('","key"')[0]
                 break
-        
-        #print(rank, end_id)
 
         f.seek(start, 0)        # Moves read/write head to the correct position
         f_output = open('tweetsWithLocation' + str(rank)+ '_' +str(pickle_count) + '.json', 'w')
@@ -70,9 +75,6 @@ def main():
         total_count += count
         f_output.write(']\n')
         f_output.close()
-                    
-
-                
 
     # clean the ',' at the end of file for valid json  
     for i in range(pickle_count+1):
@@ -87,19 +89,11 @@ def main():
         with open('tweetsWithLocation' + str(rank)+ '_' +str(i) + '.json', 'w') as file:
             file.writelines(data)
 
-            
-
-
         print(rank, total_count)
         t1_end = time.perf_counter()
         print(rank, t1_end - t1_start)
-       
-    
 
-    
-    
     return 
-            
         
 if __name__ == "__main__":
     main()
