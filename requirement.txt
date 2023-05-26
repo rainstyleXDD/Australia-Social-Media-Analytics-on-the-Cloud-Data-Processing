@@ -1,0 +1,8 @@
+CouchDB
+mpi4py
+pytorch
+transformer
+sentence-transformer
+pandas
+seaborn
+matplotlib
